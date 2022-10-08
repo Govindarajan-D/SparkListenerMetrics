@@ -1,6 +1,6 @@
 package com.sparklistenermetrics.metrics
 
-import org.apache.spark.scheduler.{SparkListener, SparkListenerJobEnd, SparkListenerStageCompleted, SparkListenerTaskEnd, TaskInfo}
+import org.apache.spark.scheduler.{SparkListener, SparkListenerApplicationEnd, SparkListenerApplicationStart, SparkListenerJobEnd, SparkListenerStageCompleted, SparkListenerTaskEnd, TaskInfo}
 import org.apache.spark.executor.TaskMetrics
 
 import scala.collection.mutable.Buffer
@@ -14,6 +14,12 @@ class SparkListenerMetrics extends SparkListener {
   private val logger = LoggerFactory.getLogger(getClass.getName)
   private val TaskDetails = mutable.Buffer[(TaskInfo,TaskMetrics)]()
   private val logWriter = new PrintWriter("log.txt")
+  private var appName: String = _
+
+  override def onApplicationStart(applicationStart: SparkListenerApplicationStart): Unit = {
+    appName = applicationStart.appName
+    logger.info("OnApplicationStart:" + applicationStart.appName)
+  }
 
   override def onTaskEnd(taskEnd: SparkListenerTaskEnd): Unit = {
      var taskMetricsVar = taskEnd.taskMetrics
@@ -28,14 +34,14 @@ class SparkListenerMetrics extends SparkListener {
     val sumRecordsWritten: Long = {
       TaskReadRecordList.foldLeft(0: Long)(_ + _)
     }
-    logger.info("OnStageCompleted - RecordsRead:" + sumRecordsWritten.toString)
-    logger.info("OnStageCompleted - RecordsWritten:" + stageCompleted.stageInfo.taskMetrics.outputMetrics.recordsWritten)
+    logger.info(appName + ": OnStageCompleted - RecordsRead:" + sumRecordsWritten.toString)
+    logger.info(appName + ": OnStageCompleted - RecordsWritten:" + stageCompleted.stageInfo.taskMetrics.outputMetrics.recordsWritten)
     logger.info("Stage Details:"+stageCompleted.stageInfo.details)
     logger.info(""+stageCompleted.stageInfo.toString)
   }
 
   override def onJobEnd(jobEnd: SparkListenerJobEnd): Unit = {
-    logger.info("OnJobEnd" + jobEnd.jobResult.toString)
+    logger.info(appName + ": OnJobEnd" + jobEnd.jobResult.toString)
     logWriter.close()
   }
 
